@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 6
+names: ['Ghengoi', 'airpod', 'butbi', 'quyenvo', 'thuocke', 'vida']
+
+roboflow:
+  workspace: nhandiendovat
+  project: nhandiendovat3-jyy9y
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/nhandiendovat/nhandiendovat3-jyy9y/dataset/1
