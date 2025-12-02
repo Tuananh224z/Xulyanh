@@ -1,325 +1,248 @@
 import tkinter as tk
-from tkinter import filedialog, scrolledtext
+from tkinter import filedialog, messagebox, scrolledtext
 from PIL import Image, ImageTk
 import cv2
 from ultralytics import YOLO
 from datetime import datetime
 import os
 
-
-class ObjectDetectionGUI:
-    def __init__(self, root: tk.Tk):
-        self.root = root
-        self.root.title("Hệ Thống Nhận Biết Đồ Vật")
-        self.root.geometry("1180x680")
-        self.root.configure(bg="#1f2933")
-
-        # trạng thái
-        self.is_running = False
-        self.cap = None
+class App(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Hệ Thống Nhận Biết Đồ Vật")
+        self.geometry("1200x700")
+        self.configure(bg="#1f2933")
+        
+        # Khởi tạo biến
         self.model = None
-
-        self.build_ui()
-
-    # ---------- UI ----------
-    def build_ui(self):
-        # grid: title / main / status
-        self.root.rowconfigure(0, weight=0)
-        self.root.rowconfigure(1, weight=1)
-        self.root.rowconfigure(2, weight=0)
-        self.root.columnconfigure(0, weight=1)
-
-        # ==== Thanh tiêu đề ====
-        title_bar = tk.Frame(self.root, bg="#111827", height=50)
-        title_bar.grid(row=0, column=0, sticky="ew")
-        title_bar.grid_propagate(False)
-
-        title_label = tk.Label(
-            title_bar,
-            text="HỆ THỐNG NHẬN BIẾT ĐỒ VẬT",
-            bg="#111827",
-            fg="#e5e7eb",
-            font=("Segoe UI", 16, "bold"),
-        )
-        title_label.pack(side=tk.LEFT, padx=20, pady=8)
-
-        # ==== Nội dung chính ====
-        main = tk.Frame(self.root, bg="#1f2933")
-        main.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
-        main.rowconfigure(0, weight=1)
-        main.columnconfigure(0, weight=3)  # video
-        main.columnconfigure(1, weight=1)  # history
-
-        # ----- Khu video + nút -----
-        video_area = tk.Frame(main, bg="#111827")
-        video_area.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
-        video_area.rowconfigure(0, weight=1)  # video
-        video_area.rowconfigure(1, weight=0)  # buttons
-        video_area.columnconfigure(0, weight=1)
-
-        # label hiển thị video
-        self.video_label = tk.Label(video_area, bg="black")
-        self.video_label.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-
-        # hàng nút
-        controls = tk.Frame(video_area, bg="#111827", height=60)
-        controls.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
-        controls.grid_propagate(False)
-        for i in range(4):
-            controls.columnconfigure(i, weight=1)
-
-        btn_style = dict(
-            font=("Segoe UI", 11, "bold"),
-            height=2,
-            bd=0,
-            activeforeground="#ffffff",
-            cursor="hand2",
-        )
-
-        self.btn_webcam = tk.Button(
-            controls,
-            text="Webcam",
-            bg="#2563eb",
-            fg="#ffffff",
-            activebackground="#1d4ed8",
-            command=self.start_webcam,
-            **btn_style,
-        )
-        self.btn_webcam.grid(row=0, column=0, sticky="ew", padx=4)
-
-        self.btn_video = tk.Button(
-            controls,
-            text="Video",
-            bg="#dc2626",
-            fg="#ffffff",
-            activebackground="#b91c1c",
-            command=self.start_video,
-            **btn_style,
-        )
-        self.btn_video.grid(row=0, column=1, sticky="ew", padx=4)
-
-        self.btn_image = tk.Button(
-            controls,
-            text="Hình ảnh",
-            bg="#16a34a",
-            fg="#ffffff",
-            activebackground="#15803d",
-            command=self.start_image,
-            **btn_style,
-        )
-        self.btn_image.grid(row=0, column=2, sticky="ew", padx=4)
-
-        self.btn_stop = tk.Button(
-            controls,
-            text="Dừng",
-            bg="#6b7280",
-            fg="#ffffff",
-            activebackground="#4b5563",
-            command=self.stop,
-            **btn_style,
-        )
-        self.btn_stop.grid(row=0, column=3, sticky="ew", padx=4)
-
-        # ----- Lịch sử -----
-        side = tk.Frame(main, bg="#111827")
-        side.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
-        side.rowconfigure(1, weight=1)
-        side.columnconfigure(0, weight=1)
-
-        history_title = tk.Label(
-            side,
-            text="LỊCH SỬ NHẬN DIỆN",
-            bg="#111827",
-            fg="#e5e7eb",
-            font=("Segoe UI", 12, "bold"),
-            anchor="w",
-        )
-        history_title.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 4))
-
-        self.history_text = scrolledtext.ScrolledText(
-            side,
-            width=40,
-            font=("Consolas", 9),
-            bg="#020617",
-            fg="#e5e7eb",
-            insertbackground="#e5e7eb",
-            borderwidth=0,
-            wrap=tk.WORD,
-        )
-        self.history_text.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
-
-        # ----- Thanh trạng thái -----
-        self.status_label = tk.Label(
-            self.root,
-            text="Chưa tải mô hình",
-            bg="#020617",
-            fg="#9ca3af",
-            anchor="w",
-            font=("Segoe UI", 10),
-        )
-        self.status_label.grid(row=2, column=0, sticky="ew")
-
-    # ---------- Tiện ích ----------
-    def log(self, msg: str):
-        t = datetime.now().strftime("%H:%M:%S")
-        self.history_text.insert(tk.END, f"[{t}] {msg}\n")
-        self.history_text.see(tk.END)
-
-    def set_status(self, text: str):
-        self.status_label.config(text=text)
-
-    def load_model_if_needed(self):
-        """Chỉ load model 1 lần khi cần."""
-        if self.model is not None:
-            return
-
-        # 🔥 ĐƯỜNG DẪN TỚI MODEL: runs/dovat2/weights/best.pt
+        self.cap = None
+        self.is_running = False
+        self.duongdan = ""
+        
+        # Tải model
+        self.load_model()
+        
+        # Tạo giao diện
+        self.create_ui()
+        
+    def load_model(self):
+        """Tải model YOLO"""
         model_path = os.path.join("runs", "dovat2", "weights", "best.pt")
-
-        if not os.path.exists(model_path):
-            self.set_status(f"KHÔNG TÌM THẤY MODEL: {model_path}")
-            self.log(f"Lỗi: không tìm thấy file mô hình: {model_path}")
+        if os.path.exists(model_path):
+            try:
+                self.model = YOLO(model_path)
+                print("Model đã được tải thành công!")
+            except Exception as e:
+                messagebox.showerror("Lỗi", f"Không thể tải model: {e}")
+        else:
+            messagebox.showwarning("Cảnh báo", f"Không tìm thấy file model tại: {model_path}")
+    
+    def create_ui(self):
+        """Tạo giao diện"""
+        # Header
+        header = tk.Frame(self, bg="#111827", height=60)
+        header.pack(fill=tk.X)
+        tk.Label(header, text="HỆ THỐNG NHẬN BIẾT ĐỒ VẬT", 
+                bg="#111827", fg="white", 
+                font=("Segoe UI", 18, "bold")).pack(pady=15)
+        
+        # Main container
+        main = tk.Frame(self, bg="#1f2933")
+        main.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Left: Video/Image display
+        left = tk.Frame(main, bg="#111827")
+        left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
+        
+        self.lbl_display = tk.Label(left, bg="black")
+        self.lbl_display.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Buttons
+        btn_frame = tk.Frame(left, bg="#111827", height=70)
+        btn_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        tk.Button(btn_frame, text="Chọn Ảnh/Video", bg="#2563eb", fg="white",
+                 font=("Segoe UI", 11, "bold"), command=self.chon_file,
+                 cursor="hand2").pack(side=tk.LEFT, padx=5, pady=10, fill=tk.X, expand=True)
+        
+        tk.Button(btn_frame, text="Kiểm Tra Ảnh", bg="#16a34a", fg="white",
+                 font=("Segoe UI", 11, "bold"), command=self.kiem_tra_anh,
+                 cursor="hand2").pack(side=tk.LEFT, padx=5, pady=10, fill=tk.X, expand=True)
+        
+        tk.Button(btn_frame, text="Bật Camera", bg="#ea580c", fg="white",
+                 font=("Segoe UI", 11, "bold"), command=self.bat_camera,
+                 cursor="hand2").pack(side=tk.LEFT, padx=5, pady=10, fill=tk.X, expand=True)
+        
+        tk.Button(btn_frame, text="Dừng", bg="#6b7280", fg="white",
+                 font=("Segoe UI", 11, "bold"), command=self.dung,
+                 cursor="hand2").pack(side=tk.LEFT, padx=5, pady=10, fill=tk.X, expand=True)
+        
+        # Right: Log
+        right = tk.Frame(main, bg="#111827", width=350)
+        right.pack(side=tk.RIGHT, fill=tk.BOTH, padx=(5, 0))
+        
+        tk.Label(right, text="LỊCH SỬ NHẬN DIỆN", bg="#111827", fg="white",
+                font=("Segoe UI", 12, "bold")).pack(pady=10)
+        
+        self.log_text = scrolledtext.ScrolledText(
+            right, bg="#020617", fg="#e5e7eb",
+            font=("Consolas", 9), borderwidth=0
+        )
+        self.log_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+        
+        # Status bar
+        self.status = tk.Label(self, text="Sẵn sàng", bg="#020617", 
+                              fg="#9ca3af", anchor="w", 
+                              font=("Segoe UI", 10))
+        self.status.pack(fill=tk.X)
+    
+    def log(self, message):
+        """Ghi log"""
+        time_str = datetime.now().strftime("%H:%M:%S")
+        self.log_text.insert(tk.END, f"[{time_str}] {message}\n")
+        self.log_text.see(tk.END)
+    
+    def chon_file(self):
+        """Chọn file ảnh hoặc video"""
+        file_path = filedialog.askopenfilename(
+            title="Chọn ảnh hoặc video",
+            filetypes=[("File hỗ trợ", "*.png *.jpg *.jpeg *.mp4 *.avi")]
+        )
+        
+        if not file_path:
             return
-
-        self.set_status(f"Đang tải mô hình đồ vật ({model_path})...")
-        self.log(f"Đang tải mô hình: {model_path}")
-
-        self.model = YOLO(model_path)
-
-        self.set_status("Đã sẵn sàng (model đồ vật)")
-        self.log(f"Đã tải mô hình {model_path}")
-
-    # ---------- Nút bấm ----------
-    def start_webcam(self):
+        
+        self.duongdan = file_path
+        
+        # Hiển thị ảnh nếu là file ảnh
+        if file_path.lower().endswith(('.png', '.jpg', '.jpeg')):
+            img = Image.open(file_path)
+            img.thumbnail((900, 550))
+            photo = ImageTk.PhotoImage(img)
+            self.lbl_display.configure(image=photo)
+            self.lbl_display.image = photo
+            
+        self.log(f"Đã chọn file: {os.path.basename(file_path)}")
+        self.status.config(text=f"File: {os.path.basename(file_path)}")
+    
+    def kiem_tra_anh(self):
+        """Kiểm tra và nhận diện ảnh"""
+        if not self.duongdan:
+            messagebox.showwarning("Cảnh báo", "Vui lòng chọn ảnh trước!")
+            return
+        
+        if not self.model:
+            messagebox.showerror("Lỗi", "Model chưa được tải!")
+            return
+        
+        # Đọc ảnh
+        img = cv2.imread(self.duongdan)
+        if img is None:
+            self.log("Không thể đọc ảnh")
+            return
+        
+        # Dự đoán
+        results = self.model.predict(img, verbose=False)
+        
+        # Đếm đối tượng
+        dem = 0
+        self.log_text.delete(1.0, tk.END)
+        
+        for r in results:
+            # Vẽ kết quả
+            img_result = r.plot(line_width=2, font_size=12)
+            
+            # Đếm và log
+            for box in r.boxes:
+                dem += 1
+                cls_id = int(box.cls[0])
+                conf = float(box.conf[0])
+                name = self.model.names[cls_id]
+                self.log(f"Phát hiện: {name} - Độ tin cậy: {conf:.2f}")
+            
+            # Hiển thị
+            self.hien_thi_frame(img_result)
+        
+        if dem > 0:
+            self.log(f"Tổng số đối tượng phát hiện: {dem}")
+            self.status.config(text=f"Phát hiện {dem} đối tượng")
+        else:
+            self.log("Không phát hiện đối tượng nào")
+            self.status.config(text="Không phát hiện đối tượng")
+    
+    def bat_camera(self):
+        """Bật camera"""
         if self.is_running:
             return
-        self.load_model_if_needed()
-        if self.model is None:
+        
+        if not self.model:
+            messagebox.showerror("Lỗi", "Model chưa được tải!")
             return
-
+        
         self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
-            self.set_status("Không mở được webcam")
-            self.log("Lỗi: không mở được webcam")
+            messagebox.showerror("Lỗi", "Không thể mở camera!")
             return
+        
         self.is_running = True
-        self.set_status("Đang nhận diện từ webcam...")
-        self.log("Bắt đầu từ webcam")
-        self.update_frame()
-
-    def start_video(self):
-        if self.is_running:
-            return
-        path = filedialog.askopenfilename(
-            title="Chọn file video",
-            filetypes=[("Video", "*.mp4 *.avi *.mov *.mkv"), ("Tất cả", "*.*")],
-        )
-        if not path:
-            return
-        self.load_model_if_needed()
-        if self.model is None:
-            return
-
-        self.cap = cv2.VideoCapture(path)
-        if not self.cap.isOpened():
-            self.set_status("Không mở được video")
-            self.log(f"Lỗi: không mở được video: {path}")
-            return
-        self.is_running = True
-        self.set_status(f"Đang nhận diện video: {os.path.basename(path)}")
-        self.log(f"Bắt đầu video: {path}")
-        self.update_frame()
-
-    def start_image(self):
-        if self.is_running:
-            return
-        path = filedialog.askopenfilename(
-            title="Chọn hình ảnh",
-            filetypes=[("Ảnh", "*.jpg *.jpeg *.png *.bmp *.webp"), ("Tất cả", "*.*")],
-        )
-        if not path:
-            return
-        self.load_model_if_needed()
-        if self.model is None:
-            return
-
-        self.set_status(f"Nhận diện ảnh: {os.path.basename(path)}")
-        self.log(f"Nhận diện ảnh: {path}")
-
-        img = cv2.imread(path)
-        if img is None:
-            self.set_status("Không đọc được ảnh")
-            self.log("Lỗi: không đọc được ảnh")
-            return
-
-        annotated, num = self.run_yolo(img)
-        self.display_frame(annotated)
-        self.log(f"Ảnh: phát hiện {num} đối tượng")
-
-    def stop(self):
-        self.is_running = False
-        if self.cap is not None:
-            self.cap.release()
-            self.cap = None
-        self.set_status("Đã dừng")
-        self.log("Dừng nhận diện")
-
-    # ---------- Vòng lặp video ----------
-    def update_frame(self):
+        self.log("Đã bật camera")
+        self.status.config(text="Camera đang chạy...")
+        self.xu_ly_camera()
+    
+    def xu_ly_camera(self):
+        """Xử lý từng frame từ camera"""
         if not self.is_running or self.cap is None:
             return
-
+        
         ret, frame = self.cap.read()
         if not ret:
-            self.log("Kết thúc video / webcam")
-            self.stop()
+            self.dung()
             return
-
-        annotated, num = self.run_yolo(frame)
-        self.display_frame(annotated)
-
-        self.set_status(f"Đang nhận diện... {num} đối tượng")
-        self.root.after(30, self.update_frame)
-
-    # ---------- YOLO ----------
-    def run_yolo(self, frame):
-        """
-        Chạy YOLO trên frame, trả về:
-        - annotated_frame: ảnh đã vẽ bbox + label
-        - num_objects: số đối tượng phát hiện
-        """
-        results = self.model.predict(
-            frame,
-            conf=0.25,      # ↓ hạ ngưỡng cho nhạy hơn
-            verbose=False,
-            max_det=50,
-        )
-        r = results[0]
-        annotated = r.plot()  # YOLO tự vẽ bbox + tên class
-        num_objects = len(r.boxes)
-        return annotated, num_objects
-
-    # ---------- Hiển thị ----------
-    def display_frame(self, frame):
+        
+        # Dự đoán
+        results = self.model.predict(frame, verbose=False)
+        
+        dem = 0
+        for r in results:
+            frame = r.plot(line_width=2, font_size=12)
+            dem = len(r.boxes)
+        
+        # Hiển thị
+        self.hien_thi_frame(frame)
+        self.status.config(text=f"Đang chạy... Phát hiện: {dem} đối tượng")
+        
+        # Gọi lại sau 30ms
+        self.after(30, self.xu_ly_camera)
+    
+    def dung(self):
+        """Dừng camera"""
+        self.is_running = False
+        if self.cap:
+            self.cap.release()
+            self.cap = None
+        self.log("Đã dừng")
+        self.status.config(text="Đã dừng")
+    
+    def hien_thi_frame(self, frame):
+        """Hiển thị frame lên label"""
+        # Chuyển BGR sang RGB
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
+        # Resize để fit
         h, w = frame_rgb.shape[:2]
-
-        max_w, max_h = 900, 520
-        scale = min(max_w / w, max_h / h)
-        new_w, new_h = int(w * scale), int(h * scale)
+        max_w, max_h = 900, 550
+        scale = min(max_w/w, max_h/h)
+        new_w, new_h = int(w*scale), int(h*scale)
+        
         frame_resized = cv2.resize(frame_rgb, (new_w, new_h))
-
+        
+        # Chuyển sang ImageTk
         img = Image.fromarray(frame_resized)
-        imgtk = ImageTk.PhotoImage(image=img)
-        self.video_label.imgtk = imgtk
-        self.video_label.configure(image=imgtk)
-
-
-def main():
-    root = tk.Tk()
-    app = ObjectDetectionGUI(root)
-    root.mainloop()
-
+        photo = ImageTk.PhotoImage(img)
+        
+        self.lbl_display.configure(image=photo)
+        self.lbl_display.image = photo
 
 if __name__ == "__main__":
-    main()
+    app = App()
+    app.mainloop()

@@ -1,0 +1,18 @@
+# YOLO và Deep Learning
+ultralytics>=8.0.0
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Xử lý hình ảnh và video
+opencv-python>=4.8.0
+Pillow>=10.0.0
+
+# Các thư viện hỗ trợ
+numpy>=1.24.0
+pandas>=2.0.0
+PyYAML>=6.0
+
+
+# GUI (tkinter thường có sẵn trong Python, nhưng có thể cần cài trên một số hệ thống)
+# tkinter - thường đã có sẵn trong Python
+

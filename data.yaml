@@ -2,12 +2,12 @@ train: ../train/images
 val: ../valid/images
 test: ../test/images
 
-nc: 6
-names: ['Ghengoi', 'airpod', 'butbi', 'quyenvo', 'thuocke', 'vida']
+nc: 24
+names: ['1', '2', '3', '5', 'Bowl', 'Charging-cable', 'Computer1', 'Expiration', 'Keyboard', 'Name', 'Normal-Glasses', 'Notebook', 'Safety-Glasses', 'Umbrella', 'University', 'book', 'cups', 'earphone', 'headphone', 'keys', 'pen', 'shoe', 'shoes', 'wrist watch']
 
 roboflow:
   workspace: nhandiendovat
-  project: nhandiendovat3-jyy9y
+  project: everyday-object-detection-ydmrc
   version: 1
   license: CC BY 4.0
-  url: https://universe.roboflow.com/nhandiendovat/nhandiendovat3-jyy9y/dataset/1
+  url: https://universe.roboflow.com/nhandiendovat/everyday-object-detection-ydmrc/dataset/1
