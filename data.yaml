@@ -7,7 +7,7 @@ names: ['1', '2', '3', '5', 'Bowl', 'Charging-cable', 'Computer1', 'Expiration',
 
 roboflow:
   workspace: nhandiendovat
-  project: everyday-object-detection-ydmrc
+  project: everyday-object-detection-iu9pk
   version: 1
   license: CC BY 4.0
-  url: https://universe.roboflow.com/nhandiendovat/everyday-object-detection-ydmrc/dataset/1
+  url: https://universe.roboflow.com/nhandiendovat/everyday-object-detection-iu9pk/dataset/1

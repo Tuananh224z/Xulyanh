@@ -1,8 +1,8 @@
 
-everyday object detection - v1 2025-11-29 7:45pm
+everyday object detection - v1 2025-12-06 6:57am
 ==============================
 
-This dataset was exported via roboflow.com on November 29, 2025 at 1:02 PM GMT
+This dataset was exported via roboflow.com on December 5, 2025 at 11:58 PM GMT
 
 Roboflow is an end-to-end computer vision platform that helps you
 * collaborate with your team on computer vision projects
@@ -21,6 +21,7 @@ The dataset includes 1485 images.
 Objects are annotated in YOLOv11 format.
 
 The following pre-processing was applied to each image:
+* Auto-orientation of pixel data (with EXIF-orientation stripping)
 
 No image augmentation techniques were applied.
 
