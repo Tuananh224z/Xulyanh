@@ -2,12 +2,12 @@ train: ../train/images
 val: ../valid/images
 test: ../test/images
 
-nc: 24
-names: ['1', '2', '3', '5', 'Bowl', 'Charging-cable', 'Computer1', 'Expiration', 'Keyboard', 'Name', 'Normal-Glasses', 'Notebook', 'Safety-Glasses', 'Umbrella', 'University', 'book', 'cups', 'earphone', 'headphone', 'keys', 'pen', 'shoe', 'shoes', 'wrist watch']
+nc: 20
+names: ['Cai - coc', 'Giay', 'ban-phim', 'book', 'but - viet', 'cai - ghe', 'cai - o', 'cai -but', 'cai-to', 'chia - khoa', 'con -chuot', 'cuc-sac', 'dong - ho', 'kinh - mat', 'lap - top', 'manhinh-maytinh', 'quyen-sach', 'sac - dien -thoai', 'tai - nghe', 'thesinhvien']
 
 roboflow:
   workspace: nhandiendovat
-  project: everyday-object-detection-iu9pk
-  version: 1
+  project: everyday-object-detection-ydmrc
+  version: 6
   license: CC BY 4.0
-  url: https://universe.roboflow.com/nhandiendovat/everyday-object-detection-iu9pk/dataset/1
+  url: https://universe.roboflow.com/nhandiendovat/everyday-object-detection-ydmrc/dataset/6
